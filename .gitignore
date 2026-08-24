@@ -1,0 +1,27 @@
+.DS_Store
+.build/
+*.app
+*.dmg
+
+# Node / Expo / React Native
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Android build outputs
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/index.android.bundle
+android/local.properties
+*.keystore
+!debug.keystore
+
+# Logs
+*.log
+npm-debug.*
+
+# Tooling
+.omo/
+.codegraph
