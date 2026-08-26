@@ -16,7 +16,6 @@
  * updateBaseURL(_:).
  */
 import { create } from 'zustand';
-import * as Network from 'expo-network';
 
 import { SubworkerApi, mapSubworkerRaw } from './api';
 import {
@@ -80,10 +79,6 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelayMs = RECONNECT_START_MS;
 
 let settingsWatchInstalled = false;
-
-/** URLs already attempted during the current outage (§9.3 fallback chain). */
-let fallbackTried = new Set<string>();
-let fallbackInFlight = false;
 
 function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -149,7 +144,7 @@ function computeWsUrl(baseUrl: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// §9.3 Smart URL fallback (current URL → saved LAN → remote domain)
+// Helpers
 // ---------------------------------------------------------------------------
 
 function hostOf(url: string): string | null {
@@ -157,60 +152,6 @@ function hostOf(url: string): string | null {
     return new URL(url).hostname;
   } catch {
     return null;
-  }
-}
-
-async function onPrivateWifi(): Promise<boolean> {
-  try {
-    const ip = await Network.getIpAddressAsync();
-    return ip !== null && ip !== '' && isPrivateIp(ip);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Next §9.3 candidate after `current` failed: saved lanUrl while on private
- * Wi-Fi, else the configured remote domain. Null once the chain is exhausted.
- */
-async function nextFallbackUrl(
-  current: string,
-): Promise<{ url: string; label: string } | null> {
-  const settings = useSettingsStore.getState();
-  const candidates: { url: string; label: string }[] = [];
-  if (settings.lanUrl && (await onPrivateWifi())) {
-    candidates.push({ url: settings.lanUrl, label: `LAN ${settings.lanUrl}` });
-  }
-  if (settings.remoteDomain) {
-    candidates.push({
-      url: settings.remoteDomain,
-      label: `remote domain ${settings.remoteDomain}`,
-    });
-  }
-  return (
-    candidates.find((c) => c.url !== current && !fallbackTried.has(c.url)) ??
-    null
-  );
-}
-
-/**
- * Switch to the next fallback candidate by mutating serverUrl — the settings
- * watcher restarts the connection core against it. Logs the switch in wsError.
- */
-async function attemptSmartFallback(failedMessage: string): Promise<void> {
-  if (fallbackInFlight || !running) return;
-  fallbackInFlight = true;
-  try {
-    const current = useSettingsStore.getState().serverUrl;
-    const next = await nextFallbackUrl(current);
-    if (!next || !running) return;
-    fallbackTried.add(next.url);
-    useSettingsStore.getState().setServerUrl(next.url);
-    useSubworkersStore.setState({
-      wsError: `${failedMessage} — Switched to ${next.label}`,
-    });
-  } finally {
-    fallbackInFlight = false;
   }
 }
 
@@ -341,16 +282,15 @@ function handleDisconnect(message: string): void {
   }
   startFastPoll();
   scheduleReconnect();
-  // §9.3: current URL failed → try saved LAN (private Wi-Fi) then remote
-  // domain. Switching serverUrl restarts the core via the settings watcher,
-  // superseding the reconnect timer scheduled above.
-  void attemptSmartFallback(message);
+  // NOTE: smart fallback intentionally removed — the serverUrl the user set
+  // in Settings is sacred. If the Cloudflare domain is unreachable, the app
+  // simply stays disconnected and retries with backoff. The user can change
+  // the URL manually in Settings if needed.
 }
 
 function markConnected(): void {
   cancelReconnectTimer();
   reconnectDelayMs = RECONNECT_START_MS;
-  fallbackTried = new Set<string>();
   const url = useSettingsStore.getState().serverUrl;
   const host = hostOf(url);
   if (host && isPrivateIp(host)) {
@@ -456,7 +396,6 @@ function startCore(): void {
   installSettingsWatcher();
   if (running) return;
   running = true;
-  fallbackTried = new Set<string>();
 
   api = new SubworkerApi(
     () => useSettingsStore.getState().serverUrl,
