@@ -1,0 +1,9 @@
+{
+  "cli": { "version": ">= 5.9.0", "appVersionSource": "local" },
+  "build": {
+    "preview": { "distribution": "internal" },
+    "preview-sim": { "distribution": "internal", "ios": { "simulator": true } },
+    "production": {}
+  },
+  "submit": { "production": {} }
+}

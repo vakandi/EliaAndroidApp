@@ -9,7 +9,8 @@
     "newArchEnabled": true,
     "icon": "./assets/icon.png",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.elia.subworkers"
     },
     "android": {
       "package": "com.elia.subworkers",
@@ -41,6 +42,13 @@
           "sounds": []
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e8d70b39-241c-4763-a459-168625a7e720"
+      }
+    },
+    "owner": "vakandi"
   }
 }
