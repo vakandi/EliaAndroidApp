@@ -25,7 +25,11 @@ import {
   RECONNECT_MAX_MS,
 } from './config';
 import { isPrivateIp } from './discovery';
-import { notifySubworkerCompleted, notifySubworkerError } from './notifications';
+import {
+  notifySubworkerCompleted,
+  notifySubworkerError,
+  notifySubworkerStarted,
+} from './notifications';
 import { SubworkerSocket, type SocketEvent } from './socket';
 import { useSettingsStore } from './settings';
 import type {
@@ -343,6 +347,7 @@ function handleSocketEvent(e: SocketEvent): void {
 
     case 'subworker_started':
       patchSubworker(e.name, { running: true, lastError: null });
+      notifySubworkerStarted(e.name);
       break;
 
     case 'subworker_completed':

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Elia Subworkers",
     "slug": "elia-subworkers",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "scheme": "eliasubworkers",
     "userInterfaceStyle": "automatic",
@@ -16,7 +16,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0D0D0D"
-      }
+      },
+      "permissions": [
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -26,6 +30,14 @@
           "android": {
             "usesCleartextTraffic": true
           }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0D0D0D",
+          "sounds": []
         }
       ]
     ]

@@ -60,12 +60,15 @@ It is one of three pieces of the ecosystem:
 - Monogram fallback everywhere photos are missing
 
 ### 🔔 Notifications
-- Local push when a subworker finishes or fails — driven purely by WebSocket events
+- Immediate local notifications for **every lifecycle event** — `started` → `finished` → `failed` — driven purely by WebSocket events (`subworker_started` / `subworker_completed` / `subworker_error`)
+- Gated by **Settings → Agent run alerts** (on by default). When disabled, no notification is posted
+- Android channel `subworker-events` with `HIGH` importance for heads-up banner + sound + vibration, even when the app is backgrounded
+- Permission handled on first launch — see **Android permissions** below
 
 ### 🌍 Remote Access via Cloudflare Tunnel
 - In-app wizard creates a **free Cloudflare Tunnel** for your own domain: token check → tunnel creation → DNS routing → connector startup → public verification, all step-by-step
 - One-time setup on your LAN; afterwards the phone reaches the server from anywhere (4G/5G), and the connector survives restarts automatically
-- Smart URL fallback: tries current URL → saved LAN address → configured domain
+- Stable URL: whatever you set in **Settings → Server URL** stays exactly as set — no automatic fallback to localhost or LAN IP. If the domain is unreachable the app simply stays disconnected and retries
 
 ### 🔍 LAN Discovery
 - One-tap network scan finds the server IP automatically (parallel probes, verified responses)
@@ -107,6 +110,35 @@ cd android && ./gradlew assembleRelease
 **Settings → Remote access → Cloudflare Tunnel** — enter your domain and a Cloudflare API
 token (`Zone:DNS:Edit` + `Account:Cloudflare Tunnel:Edit`). The wizard does the rest.
 Afterwards just use `https://your.domain` as the Server URL — no port, TLS included.
+
+---
+
+## 📲 Android Permissions
+
+EliaSubworkers is intentionally minimal — no location, camera, microphone, contacts, or storage permissions. Notifications and networking are the only runtime-sensitive features.
+
+| Permission | Declared in manifest | When required | What happens if denied |
+|---|---|---|---|
+| `INTERNET` | auto (Expo) | Always | App cannot reach the server at all |
+| `VIBRATE` | `app.json` (+ channel) | Always (channel vibration) | Notifications still appear, just without haptic |
+| `POST_NOTIFICATIONS` | `app.json` via `expo-notifications` plugin | **Android 13+ (API 33+)** — runtime prompt on first launch | System silently drops all notifications; app keeps working, banner never shows. Re-enable in **System Settings → Apps → Elia Subworkers → Notifications** |
+
+### Behaviour per Android version
+
+| Android version | What you see |
+|---|---|
+| **6–12 (API 23–32)** | Notifications are granted at install time. No prompt. Channel `subworker-events` is created as `HIGH` importance — heads-up banner + sound + vibration for `started` / `finished` / `failed`. Toggle in **Settings → Agent run alerts** controls posting. |
+| **13+ (API 33+)** | On first app launch `initNotifications()` calls `getPermissionsAsync()` → `requestPermissionsAsync()`. System shows the standard *Allow notifications?* dialog. If you tap **Allow**, behaviour is identical to Android 12. If you tap **Don't allow**, you will never see run alerts until you re-enable them in system settings. The in-app toggle alone cannot override a system denial. |
+| **14+ (API 34+)** | No `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` needed. The app uses an **immediate trigger** (`trigger: null`) for local notifications, so no exact-alarm permission is requested. |
+
+### Notification delivery details
+
+- Channel ID: `subworker-events` (`HIGH` importance, `HIGH` priority, sound `default`, vibration `[0,250,250,250]`)
+- Source: pure WebSocket events from `ws://<server>/ws` — no FCM, no background service, no polling
+- Foreground: banner + list + sound; Background/killed: system still delivers via the notification channel (Expo local notification)
+- Battery optimizations: if the OEM aggressively kills background apps, keep **Battery → Unrestricted** for Elia Subworkers if you want background `started`/`finished` alerts reliably
+
+> **Troubleshooting:** *No notifications at all?* Check 1) **Settings → Agent run alerts** is ON, 2) **System Settings → Apps → Elia Subworkers → Notifications** is Allowed, 3) **Notification categories → Subworker events** is not muted, 4) you are actually receiving WebSocket events (connection shows *Connected* in the Home tab).
 
 ---
 
