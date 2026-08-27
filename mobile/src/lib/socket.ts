@@ -10,6 +10,8 @@ export type SocketEvent =
   | { event: 'initial_status'; subworkers: Record<string, unknown>[] }
   | { event: 'subworker_started' | 'subworker_completed'; name: string }
   | { event: 'subworker_error'; name: string; error: string }
+  | { event: 'run_log'; name: string; text: string; field: string }
+  | { event: 'run_banner'; name: string; banner: Record<string, unknown> }
   | { event: 'pong' }
   | { event: 'unknown'; raw: unknown };
 
@@ -53,6 +55,14 @@ export function parseSocketEvent(data: unknown): SocketEvent {
             name: obj.name,
             error: typeof obj.error === 'string' ? obj.error : 'Unknown error',
           }
+        : { event: 'unknown', raw: data };
+    case 'run_log':
+      return typeof obj.name === 'string' && typeof obj.text === 'string'
+        ? { event: 'run_log', name: obj.name, text: obj.text, field: typeof obj.field === 'string' ? obj.field : 'text' }
+        : { event: 'unknown', raw: data };
+    case 'run_banner':
+      return typeof obj.name === 'string' && typeof obj.banner === 'object' && obj.banner !== null
+        ? { event: 'run_banner', name: obj.name, banner: obj.banner as Record<string, unknown> }
         : { event: 'unknown', raw: data };
     case 'pong':
       return { event: 'pong' };

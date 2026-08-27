@@ -76,15 +76,35 @@ function num(value: unknown): number | null {
 }
 
 function mapMessagePartRaw(raw: Record<string, unknown>): MessagePart {
+  const state =
+    typeof raw.state === 'object' && raw.state !== null && !Array.isArray(raw.state)
+      ? (raw.state as Record<string, unknown>)
+      : null;
+
+  // OpenCode nests tool payload under state: {tool, input, output, ...}.
+  // Resolve tool name from multiple possible locations — some versions put
+  // the name in state.tool / state.name, others in the top-level tool field.
+  const toolName =
+    str(raw.tool) ??
+    (state ? str(state.tool) ?? str(state.name) ?? str(state.function) : null) ??
+    str(raw.name) ??
+    str(raw.function) ??
+    null;
+
+  // Input/output may live under state.input / state.output (see server
+  // subworkers.py state handling). Fall back to top-level fields.
+  const rawInput = state?.input ?? raw.input;
+  const rawOutput = state?.output ?? raw.output;
+
   return {
     type: str(raw.type) ?? 'unknown',
     text: str(raw.text),
-    tool: str(raw.tool),
+    tool: toolName,
     input:
-      typeof raw.input === 'object' && raw.input !== null && !Array.isArray(raw.input)
-        ? (raw.input as Record<string, unknown>)
+      typeof rawInput === 'object' && rawInput !== null && !Array.isArray(rawInput)
+        ? (rawInput as Record<string, unknown>)
         : null,
-    output: str(raw.output),
+    output: typeof rawOutput === 'string' ? rawOutput : str(rawOutput),
   };
 }
 

@@ -32,6 +32,7 @@ import {
 } from './notifications';
 import { SubworkerSocket, type SocketEvent } from './socket';
 import { useSettingsStore } from './settings';
+import { emitLive, emitBanner } from './liveBus';
 import type {
   ConnectionState,
   ModelOption,
@@ -331,6 +332,12 @@ function connectWs(): void {
 
 function handleSocketEvent(e: SocketEvent): void {
   switch (e.event) {
+    case 'run_log':
+      emitLive(e.name, e.field, e.text);
+      break;
+    case 'run_banner':
+      emitBanner(e.name, e.banner);
+      break;
     case 'initial_status': {
       useSubworkersStore.setState((state) => ({
         subworkers: mergeSubworkers(e.subworkers.map(mapSubworkerWithSchedule), state.subworkers),
