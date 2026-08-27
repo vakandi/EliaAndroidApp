@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 import type { ColorValue } from 'react-native';
 
+import HomeBanner from '@/src/components/HomeBanner';
 import { useTheme } from '@/src/theme';
 
 function TabIcon({ glyph, color, size }: { glyph: string; color: ColorValue; size: number }) {
@@ -33,6 +34,8 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
+          header: () => <HomeBanner />,
+          headerShadowVisible: false,
           tabBarIcon: ({ color, size }) => <TabIcon glyph="⌂" color={color} size={size} />,
         }}
       />
