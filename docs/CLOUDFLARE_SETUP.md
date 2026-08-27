@@ -1,12 +1,11 @@
-# CLOUDFLARE SETUP — exposer Elia Subworkers via elia.surfai.tech
+# CLOUDFLARE SETUP — exposer Elia Subworkers via votre domaine
 
 > Objectif : accéder au serveur subworkers **partout** (4G, autre Wi-Fi) via
-> `https://elia.surfai.tech` — 100% gratuit (Cloudflare Tunnel, pas de VPS, pas de ports ouverts).
+> `https://elia.example.com` — 100% gratuit (Cloudflare Tunnel, pas de VPS, pas de ports ouverts).
 
-Ta situation (déjà en place ✅) :
-- Domaine `surfai.tech` acheté chez **LWS**
-- DNS délégué à **Cloudflare** (LWS renvoie vers CF — c'est déjà le cas, tu gères le domaine sur
-  https://dash.cloudflare.com/c91e62d509f76c94956b4deb210b69a3/surfai.tech)
+Ta situation :
+- Domaine `example.com` chez votre registrar
+- DNS délégué à **Cloudflare** (le domaine est géré sur https://dash.cloudflare.com)
 
 Il reste **3 étapes** : créer le tunnel, router le sous-domaine, lancer cloudflared.
 
@@ -21,26 +20,24 @@ Il reste **3 étapes** : créer le tunnel, router le sous-domaine, lancer cloudf
    - Template **"Edit zone DNS"**, puis AJOUTE une 2e permission :
      - `Zone → DNS → Edit`
      - `Account → Cloudflare Tunnel → Edit`
-   - Zone Resources : `Include → Specific zone → surfai.tech`
+   - Zone Resources : `Include → Specific zone → example.com`
    - Create → **copie le token** (il ne se réaffiche plus).
 
 ---
 
 ## Étape 1 — Depuis l'app Android (recommandé)
 
-Une fois l'Unité M livrée :
-
 1. App → **Settings → Remote access → Set up domain**
-2. Domaine : `elia.surfai.tech`
+2. Domaine : `elia.example.com` (remplacez par votre sous-domaine)
 3. Coller l'API Token → **Start setup**
 4. Le serveur enchaîne tout seul :
-   - ✅ Vérifie le token + la zone surfai.tech
+   - ✅ Vérifie le token + la zone example.com
    - ✅ Crée le tunnel (named tunnel dans ton account CF)
    - ✅ Crée l'enregistrement DNS `elia → <tunnel-id>.cfargotunnel.com` (proxied)
-   - ✅ Configure l'ingress `elia.surfai.tech → http://<service>:5656`
+   - ✅ Configure l'ingress `elia.example.com → http://<service>:5656`
    - ✅ Écrit `docker-compose.override.tunnel.yml` + démarre le conteneur `cloudflared`
-   - ✅ Vérifie `https://elia.surfai.tech/server/health` → 200
-5. Bouton **"Use https://elia.surfai.tech everywhere"** → l'app est connectée partout.
+   - ✅ Vérifie `https://elia.example.com/server/health` → 200
+5. Bouton **"Use https://elia.example.com everywhere"** → l'app est connectée partout.
 
 ---
 
@@ -50,7 +47,7 @@ Une fois l'Unité M livrée :
 
 ```bash
 CF_TOKEN="ton-api-token"
-ACCOUNT="c91e62d509f76c94956b4deb210b69a3"
+ACCOUNT="YOUR_ACCOUNT_ID"
 
 # 1. Tunnel ID
 curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/cfd_tunnel" \
@@ -64,10 +61,10 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/cfd_tunn
 # → TUNNEL_TOKEN (long string base64)
 ```
 
-### B. Router elia.surfai.tech vers le tunnel
+### B. Router elia.example.com vers le tunnel
 
 ```bash
-ZONE=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=surfai.tech" \
+ZONE=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=example.com" \
   -H "Authorization: Bearer $CF_TOKEN" | python3 -c "import json,sys; print(json.load(sys.stdin)['result'][0]['id'])")
 
 curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE/dns_records" \
@@ -81,7 +78,7 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE/dns_records" \
 curl -s -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/cfd_tunnel/$TUNNEL_ID/configurations" \
   -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" \
   -d '{"config":{"ingress":[
-        {"hostname":"elia.surfai.tech","service":"http://subworkers-server:5656"},
+        {"hostname":"elia.example.com","service":"http://subworkers-server:5656"},
         {"service":"http_status:404"}]}}' | python3 -m json.tool
 ```
 
@@ -115,12 +112,12 @@ docker compose -f docker-compose.yml -f docker-compose.override.tunnel.yml up -d
 ### E. Vérifier
 
 ```bash
-curl -s https://elia.surfai.tech/server/health        # → {"state": ...} ✅
+curl -s https://elia.example.com/server/health        # → {"state": ...} ✅
 # WS marche aussi automatiquement :
-#   wss://elia.surfai.tech/ws?token=<ELIA_AUTH_TOKEN>
+#   wss://elia.example.com/ws?token=<ELIA_AUTH_TOKEN>
 ```
 
-**Sur ton téléphone en 4G (Wi-Fi coupé)** : Settings → Server URL = `https://elia.surfai.tech`
+**Sur ton téléphone en 4G (Wi-Fi coupé)** : Settings → Server URL = `https://elia.example.com`
 → Connected ✅ — c'est le test final.
 
 ---
@@ -138,6 +135,6 @@ curl -s https://elia.surfai.tech/server/health        # → {"state": ...} ✅
 ## Sécurité recommandée (après que ça marche)
 
 1. **Active l'auth token** (`AUTHENTIFICATION.md`) — sinon n'importe qui peut trigger tes agents.
-2. Optionnel (encore plus dur) : Cloudflare Access sur `elia.surfai.tech` (Zero Trust → Access →
+2. Optionnel (encore plus dur) : Cloudflare Access sur `elia.example.com` (Zero Trust → Access →
    Applications → Self-hosted, policy email OTP) — gratuit, et l'app devra alors utiliser un
    **Service Token** CF (header `CF-Access-Client-Id/Secret`) — évolution v2.
