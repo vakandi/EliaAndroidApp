@@ -183,8 +183,8 @@ export class SubworkerApi {
     };
   }
 
-  /** POST /trigger/{name} — optional prompt body for a custom instruction. */
-  async trigger(name: string, prompt?: string): Promise<void> {
+  /** POST /trigger/{name} — optional prompt body; returns the new session_id if the server already created it. */
+  async trigger(name: string, prompt?: string): Promise<string | null> {
     const body = prompt && prompt.trim() !== '' ? { prompt: prompt.trim() } : undefined;
     const res = await fetch(
       `${this.getBaseUrl()}/trigger/${encodeURIComponent(name)}`,
@@ -198,6 +198,34 @@ export class SubworkerApi {
       },
     );
     assertOk(res, `Trigger ${name}`);
+    try {
+      const json = await readJson(res);
+      const sid = str(json.session_id);
+      if (sid) return sid;
+    } catch {
+      // No JSON or no session_id — fall through to polling fallback.
+    }
+    return null;
+  }
+
+  /** Poll GET /sessions/{name}/list until a new session appears (or timeout). */
+  async waitForSessionId(name: string, knownIds: ReadonlySet<string> = new Set(), timeoutMs = 12000): Promise<string | null> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        const list = await this.getSessionsList(name);
+        // Prefer the live running session (title "▶ Running"), then any unknown id.
+        const running = list.find((s) => s.title === '▶ Running');
+        if (running && !knownIds.has(running.sessionId)) return running.sessionId;
+        const unseen = list.find((s) => !knownIds.has(s.sessionId));
+        if (unseen && knownIds.size > 0) return unseen.sessionId;
+        if (list.length > 0 && knownIds.size === 0) return list[0]!.sessionId;
+      } catch {
+        // transient — retry
+      }
+      await new Promise<void>((r) => setTimeout(r, 700));
+    }
+    return null;
   }
 
   /** POST /enable/{name} */

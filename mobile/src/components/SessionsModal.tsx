@@ -97,6 +97,15 @@ export function SessionsModal({ visible, agentName, onClose, initialSessionId }:
     setSelected({ sessionId: initialSessionId, title: match?.title ?? null });
   }, [visible, initialSessionId, sessions]);
 
+  const handlePromptTriggered = useCallback(
+    (_agent: string, sid: string) => {
+      setPromptOpen(false);
+      setSelected({ sessionId: sid, title: null });
+      void load('pull');
+    },
+    [load],
+  );
+
   return (
     <Modal
       visible={visible}
@@ -220,6 +229,7 @@ export function SessionsModal({ visible, agentName, onClose, initialSessionId }:
           visible={promptOpen}
           onClose={() => setPromptOpen(false)}
           agentName={agentName}
+          onTriggered={handlePromptTriggered}
         />
       </View>
     </Modal>

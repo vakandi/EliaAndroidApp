@@ -431,6 +431,10 @@ export default function HomeScreen() {
         visible={promptOpen}
         onClose={() => setPromptOpen(false)}
         agents={subworkers}
+        onTriggered={(agent, sid) => {
+          setPromptOpen(false);
+          router.push({ pathname: '/agent/[name]', params: { name: agent, chats: '1', session: sid } });
+        }}
       />
     </ScrollView>
   );

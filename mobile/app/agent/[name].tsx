@@ -66,7 +66,7 @@ export default function AgentDetailScreen() {
   // Deep link from calendar chips (?chats=1&session=<id>) — consumed once
   // at mount so closing the modal doesn't re-trigger from stale params.
   const [chatsOpen, setChatsOpen] = useState(() => isFlagParam(rawChats));
-  const [initialSessionId] = useState(() => decodeParam(rawSession));
+  const [chatsSessionId, setChatsSessionId] = useState<string | null>(() => decodeParam(rawSession));
 
   const subworkers = useSubworkersStore((s) => s.subworkers);
   const isLoading = useSubworkersStore((s) => s.isLoading);
@@ -244,7 +244,10 @@ export default function AgentDetailScreen() {
         {/* Chats row */}
         <Pressable
           style={({ pressed }) => [styles.sectionCard, pressed && styles.pressed]}
-          onPress={() => setChatsOpen(true)}
+          onPress={() => {
+            setChatsSessionId(null);
+            setChatsOpen(true);
+          }}
           android_ripple={{ color: theme.colors.border }}
           accessibilityRole="button"
           accessibilityLabel="View this agent's conversations"
@@ -334,14 +337,22 @@ export default function AgentDetailScreen() {
       <SessionsModal
         visible={chatsOpen}
         agentName={subworker.name}
-        onClose={() => setChatsOpen(false)}
-        initialSessionId={initialSessionId}
+        onClose={() => {
+          setChatsOpen(false);
+          setChatsSessionId(null);
+        }}
+        initialSessionId={chatsSessionId}
       />
 
       <PromptModal
         visible={promptOpen}
         onClose={() => setPromptOpen(false)}
         agentName={subworker.name}
+        onTriggered={(_agent, sid) => {
+          setPromptOpen(false);
+          setChatsSessionId(sid);
+          setChatsOpen(true);
+        }}
       />
     </View>
   );

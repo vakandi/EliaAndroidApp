@@ -59,7 +59,7 @@ interface SubworkersState {
   stop(): void;
   reconnect(): void;
   refreshNow(): Promise<void>;
-  triggerSubworker(name: string, prompt?: string): Promise<void>;
+  triggerSubworker(name: string, prompt?: string): Promise<string | null>;
   enableSubworker(name: string): Promise<void>;
   disableSubworker(name: string): Promise<void>;
   fetchLogs(name: string, lines?: number): Promise<string[]>;
@@ -482,14 +482,18 @@ export const useSubworkersStore = create<SubworkersState>()(() => ({
     await refreshNowCore();
   },
 
-  triggerSubworker: async (name: string, prompt?: string) => {
+  triggerSubworker: async (name: string, prompt?: string): Promise<string | null> => {
     const client = api;
-    if (!client) return;
+    if (!client) return null;
     try {
-      await client.trigger(name, prompt);
+      const sid = await client.trigger(name, prompt);
       patchSubworker(name, { running: true, lastError: null });
+      if (sid) return sid;
+      const fallback = await client.waitForSessionId(name, new Set(), 12000);
+      return fallback;
     } catch (err) {
       useSubworkersStore.setState({ lastError: `Trigger failed: ${errMessage(err)}` });
+      return null;
     }
   },
 

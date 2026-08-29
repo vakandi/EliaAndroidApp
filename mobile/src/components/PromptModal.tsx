@@ -30,9 +30,11 @@ interface PromptModalProps {
   agentName?: string;
   /** Picker mode: choose from these agents (homepage). */
   agents?: SubworkerInfo[];
+  /** Called with the new session id as soon as the server creates it so the caller can open the live chat immediately. */
+  onTriggered?: (agentName: string, sessionId: string) => void;
 }
 
-export function PromptModal({ visible, onClose, agentName, agents }: PromptModalProps) {
+export function PromptModal({ visible, onClose, agentName, agents, onTriggered }: PromptModalProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const styles = makeStyles(theme, insets.bottom);
@@ -67,14 +69,28 @@ export function PromptModal({ visible, onClose, agentName, agents }: PromptModal
   const targetName = singleMode ? agentName : selectedName;
   const canSend = !!targetName && prompt.trim() !== '' && !sending;
 
+  const [waitingLabel, setWaitingLabel] = useState<string | null>(null);
+
   const handleSend = async () => {
     if (!targetName || prompt.trim() === '' || sending) return;
     setSending(true);
+    setWaitingLabel('Starting…');
     setActionError(null);
     try {
-      await triggerSubworker(targetName, prompt);
-      onClose();
+      const timer = setTimeout(() => setWaitingLabel('Creating session…'), 1200);
+      const sid = await triggerSubworker(targetName, prompt);
+      clearTimeout(timer);
+      if (sid) {
+        if (onTriggered) onTriggered(targetName, sid);
+        onClose();
+        return;
+      }
+      setWaitingLabel(null);
+      setActionError('Agent triggered but session did not appear yet — open Chats to follow it live.');
+      // Still close after a beat so the caller can open the list, but keep the prompt reachable.
+      setTimeout(() => onClose(), 1200);
     } catch (e) {
+      setWaitingLabel(null);
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setSending(false);
@@ -239,7 +255,10 @@ export function PromptModal({ visible, onClose, agentName, agents }: PromptModal
           accessibilityLabel="Trigger agent with this prompt"
         >
           {sending ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <View style={styles.sendingRow}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              {waitingLabel && <Text style={styles.sendingLabel}>{waitingLabel}</Text>}
+            </View>
           ) : (
             <Text style={styles.sendText}>
               {singleMode ? `Trigger ${agentName}` : 'Trigger agent'}
@@ -416,6 +435,16 @@ const makeStyles = (theme: Theme, bottomInset = 0) =>
     },
     sendDisabled: {
       opacity: 0.45,
+    },
+    sendingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    sendingLabel: {
+      ...theme.type.headline,
+      color: '#FFFFFF',
+      fontSize: 14,
     },
     sendText: {
       ...theme.type.headline,
