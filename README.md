@@ -37,6 +37,14 @@ It is one of three pieces of the ecosystem:
 
 ---
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="assets/screenshots/elia-subworkers-home.jpg" alt="EliaSubworkers — Home dashboard" width="280">
+</p>
+
+---
+
 ## ✨ Features
 
 ### 🤖 Realtime Dashboard
