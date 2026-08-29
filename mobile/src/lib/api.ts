@@ -183,11 +183,19 @@ export class SubworkerApi {
     };
   }
 
-  /** POST /trigger/{name} */
-  async trigger(name: string): Promise<void> {
+  /** POST /trigger/{name} — optional prompt body for a custom instruction. */
+  async trigger(name: string, prompt?: string): Promise<void> {
+    const body = prompt && prompt.trim() !== '' ? { prompt: prompt.trim() } : undefined;
     const res = await fetch(
       `${this.getBaseUrl()}/trigger/${encodeURIComponent(name)}`,
-      { method: 'POST', headers: this.authHeaders() },
+      {
+        method: 'POST',
+        headers: {
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...this.authHeaders(),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      },
     );
     assertOk(res, `Trigger ${name}`);
   }

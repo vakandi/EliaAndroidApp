@@ -24,6 +24,7 @@ import {
 } from '@/src/components/AgentRow';
 import { LogsPanel } from '@/src/components/LogsPanel';
 import { ModelPickerModal } from '@/src/components/ModelPickerModal';
+import { PromptModal } from '@/src/components/PromptModal';
 import { SessionsModal } from '@/src/components/SessionsModal';
 import { StateBadge } from '@/src/components/StateBadge';
 import { useSubworkersStore } from '@/src/lib/store';
@@ -84,6 +85,7 @@ export default function AgentDetailScreen() {
   const [togglingEnable, setTogglingEnable] = useState(false);
   const [settingMain, setSettingMain] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
+  const [promptOpen, setPromptOpen] = useState(false);
 
   const isMain = !!subworker && mainAgentName === subworker.name;
 
@@ -184,6 +186,15 @@ export default function AgentDetailScreen() {
             <Text style={styles.mainChipText}>★ Main</Text>
           </View>
         )}
+        <Pressable
+          onPress={() => setPromptOpen(true)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Start a new session with a prompt"
+          style={({ pressed }) => [styles.newSessionBtn, pressed && styles.pressed]}
+        >
+          <Text style={styles.newSessionText}>＋ New</Text>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -326,6 +337,12 @@ export default function AgentDetailScreen() {
         onClose={() => setChatsOpen(false)}
         initialSessionId={initialSessionId}
       />
+
+      <PromptModal
+        visible={promptOpen}
+        onClose={() => setPromptOpen(false)}
+        agentName={subworker.name}
+      />
     </View>
   );
 }
@@ -431,6 +448,18 @@ const makeStyles = (theme: Theme) =>
     mainChipText: {
       ...theme.type.caption,
       fontSize: 11,
+      fontWeight: '600',
+      color: theme.colors.accent,
+    },
+    newSessionBtn: {
+      backgroundColor: `${theme.colors.accent}1A`,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+    },
+    newSessionText: {
+      ...theme.type.caption,
+      fontSize: 12,
       fontWeight: '600',
       color: theme.colors.accent,
     },

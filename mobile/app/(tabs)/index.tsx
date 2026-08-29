@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 
 import { ErrorBanner } from '@/src/components/ErrorBanner';
+import { PromptModal } from '@/src/components/PromptModal';
 import { RecentChatsCard } from '@/src/components/RecentChatsCard';
 import { StatusCard } from '@/src/components/StatusCard';
 import { useSettingsStore } from '@/src/lib/settings';
@@ -83,6 +84,9 @@ export default function HomeScreen() {
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const visibleError =
     lastError && lastError !== dismissedError ? lastError : null;
+
+  // "New session" prompt modal (agent picker + custom prompt).
+  const [promptOpen, setPromptOpen] = useState(false);
 
   // Pull-to-refresh wraps the store action; failures land in lastError.
   const [refreshing, setRefreshing] = useState(false);
@@ -283,6 +287,19 @@ export default function HomeScreen() {
       {/* Quick actions / empty state -------------------------------------- */}
       {hasData ? (
         <StatusCard title="Quick actions">
+          <Pressable
+            onPress={() => setPromptOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Start a new session with a prompt"
+            style={({ pressed }) => [
+              styles.newSessionBtn,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.newSessionPlus}>＋</Text>
+            <Text style={styles.newSessionText}>New session</Text>
+          </Pressable>
+
           {runningAgents.length > 0 ? (
             <View>
               <Text style={[theme.type.caption, styles.groupCaption]}>Running</Text>
@@ -409,6 +426,12 @@ export default function HomeScreen() {
           ) : null}
         </View>
       ) : null}
+
+      <PromptModal
+        visible={promptOpen}
+        onClose={() => setPromptOpen(false)}
+        agents={subworkers}
+      />
     </ScrollView>
   );
 }
@@ -531,6 +554,28 @@ const makeStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
 
     // Quick actions
     groupCaption: { color: colors.textTertiary, marginBottom: 6 },
+    newSessionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 13,
+      borderRadius: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: withAlpha(colors.accent, 0.4),
+      backgroundColor: withAlpha(colors.accent, 0.1),
+      marginBottom: 12,
+    },
+    newSessionPlus: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.accent,
+    },
+    newSessionText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.accent,
+    },
     runningRow: {
       flexDirection: 'row',
       alignItems: 'center',

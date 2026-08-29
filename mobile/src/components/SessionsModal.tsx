@@ -26,6 +26,7 @@ import { SubworkerApi } from '@/src/lib/api';
 import type { SessionSummary } from '@/src/lib/session-types';
 import { useSettingsStore } from '@/src/lib/settings';
 import { ChatViewer } from '@/src/components/ChatViewer';
+import { PromptModal } from '@/src/components/PromptModal';
 import { useTheme, type Theme } from '@/src/theme';
 
 interface SessionsModalProps {
@@ -53,6 +54,7 @@ export function SessionsModal({ visible, agentName, onClose, initialSessionId }:
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedSession | null>(null);
   const deepLinkConsumed = useRef(false);
+  const [promptOpen, setPromptOpen] = useState(false);
 
   const load = useCallback(
     async (mode: 'initial' | 'pull') => {
@@ -125,14 +127,24 @@ export function SessionsModal({ visible, agentName, onClose, initialSessionId }:
             </Text>
           </View>
           {!selected && (
-            <Pressable
-              onPress={() => void load('pull')}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Refresh conversation list"
-            >
-              <Text style={styles.iconBtn}>↻</Text>
-            </Pressable>
+            <>
+              <Pressable
+                onPress={() => setPromptOpen(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Start a new session with a prompt"
+              >
+                <Text style={styles.iconBtn}>＋</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void load('pull')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Refresh conversation list"
+              >
+                <Text style={styles.iconBtn}>↻</Text>
+              </Pressable>
+            </>
           )}
         </View>
 
@@ -203,6 +215,12 @@ export function SessionsModal({ visible, agentName, onClose, initialSessionId }:
             )}
           </ScrollView>
         )}
+
+        <PromptModal
+          visible={promptOpen}
+          onClose={() => setPromptOpen(false)}
+          agentName={agentName}
+        />
       </View>
     </Modal>
   );
