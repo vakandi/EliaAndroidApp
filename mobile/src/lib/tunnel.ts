@@ -150,13 +150,15 @@ export class TunnelApi {
   }
 
   /** POST /tunnel/check — validate token + zone quickly without creating anything. */
-  async check(domain: string, apiToken: string): Promise<TunnelCheckResult> {
+  async check(domain: string, apiToken: string, email?: string): Promise<TunnelCheckResult> {
+    const isGlobal = apiToken.startsWith('cfk_') || apiToken.length === 37;
+    const body: Record<string, string> = isGlobal && email ? { domain, global_key: apiToken, email } : { domain, api_token: apiToken };
     let res: Response;
     try {
       res = await fetch(this.endpoint('/tunnel/check'), {
         method: 'POST',
         headers: this.authHeaders(true),
-        body: JSON.stringify({ domain, api_token: apiToken }),
+        body: JSON.stringify(body),
       });
     } catch (err) {
       return {
@@ -190,11 +192,13 @@ export class TunnelApi {
   }
 
   /** POST /tunnel/setup — kick off the full orchestration (progress via getStatus). */
-  async startSetup(domain: string, apiToken: string): Promise<void> {
+  async startSetup(domain: string, apiToken: string, email?: string): Promise<void> {
+    const isGlobal = apiToken.startsWith('cfk_') || apiToken.length === 37;
+    const body: Record<string, string> = isGlobal && email ? { domain, global_key: apiToken, email } : { domain, api_token: apiToken };
     const res = await fetch(this.endpoint('/tunnel/setup'), {
       method: 'POST',
       headers: this.authHeaders(true),
-      body: JSON.stringify({ domain, api_token: apiToken }),
+      body: JSON.stringify(body),
     });
     await assertOk(res, 'Tunnel setup');
     // The server reports logical failures inside a 200 body ({status:"error"}).

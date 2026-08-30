@@ -808,6 +808,7 @@ function TunnelWizardModal({
   const [phase, setPhase] = useState<WizardPhase>('form');
   const [domainDraft, setDomainDraft] = useState('');
   const [tokenDraft, setTokenDraft] = useState('');
+  const [emailDraft, setEmailDraft] = useState('wael.bousfira@gmail.com');
   const [checkMessage, setCheckMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [stepIndex, setStepIndex] = useState(-1);
@@ -829,14 +830,16 @@ function TunnelWizardModal({
 
   const normalizedDomain = normalizeDomain(domainDraft);
   const tokenTrimmed = tokenDraft.trim();
-  const formValid = normalizedDomain !== null && tokenTrimmed.length > 0;
+  const emailTrimmed = emailDraft.trim();
+  const isGlobal = tokenTrimmed.startsWith('cfk_') || tokenTrimmed.length === 37;
+  const formValid = normalizedDomain !== null && tokenTrimmed.length > 0 && (!isGlobal || emailTrimmed.includes('@'));
 
   const runCheck = async (): Promise<void> => {
     if (!formValid) return;
     setChecking(true);
     setCheckMessage(null);
     try {
-      const result = await tunnelApi.check(normalizedDomain, tokenTrimmed);
+      const result = await tunnelApi.check(normalizedDomain, tokenTrimmed, isGlobal ? emailTrimmed : undefined);
       setCheckMessage(
         result.message ?? (result.ok ? 'Looks good.' : 'Check failed.'),
       );
@@ -855,7 +858,7 @@ function TunnelWizardModal({
     const controller = new AbortController();
     abortRef.current = controller;
     tunnelApi
-      .startSetup(normalizedDomain, tokenTrimmed)
+      .startSetup(normalizedDomain, tokenTrimmed, isGlobal ? emailTrimmed : undefined)
       .then(() =>
         tunnelApi.pollSetup(
           (status) => {
@@ -918,12 +921,25 @@ function TunnelWizardModal({
                 autoCapitalize="none"
                 autoCorrect={false}
                 secureTextEntry
-                placeholder="Cloudflare API Token"
+                placeholder="Cloudflare API Token (or Global API Key cfk_...)"
+                placeholderTextColor={theme.colors.textTertiary}
+                style={styles.input}
+              />
+              <TextInput
+                value={emailDraft}
+                onChangeText={(text) => {
+                  setEmailDraft(text);
+                  setCheckMessage(null);
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                placeholder="Cloudflare Email (for Global API Key)"
                 placeholderTextColor={theme.colors.textTertiary}
                 style={styles.input}
               />
               <Text style={styles.dialogHint}>
-                Token needs Zone:DNS:Edit + Account:Cloudflare Tunnel:Edit.
+                API Token needs Zone:DNS:Edit + Tunnel:Edit. Or paste Global API Key (cfk_...) + Email to auto-create.
               </Text>
 
               {checkMessage !== null ? (
